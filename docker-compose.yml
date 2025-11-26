@@ -20,42 +20,32 @@ services:
     container_name: new-api
     restart: always
     command: --log-dir /app/logs
-    ports:
-      - "32768:3000"  # 修改为 32768 端口
+    network_mode: "host"  # 使用宿主机网络，可以访问宿主机的 Redis
     volumes:
       - ./data:/data
       - ./logs:/app/logs
     environment:
       # 使用腾讯云 CynosDB MySQL
       - SQL_DSN=new_api:new_api@tcp(gz-cynosdbmysql-grp-j8cd1jir.sql.tencentcdb.com:27219)/new_api
-#      - SQL_DSN=postgresql://root:123456@postgres:5432/new-api # 本地 PostgreSQL (已停用)
-#      - SQL_DSN=root:123456@tcp(mysql:3306)/new-api  # 本地 MySQL (已停用)
-      - REDIS_CONN_STRING=redis://redis
+      # 使用宿主机的 Redis（127.0.0.1:6379）
+      - REDIS_CONN_STRING=redis://127.0.0.1:6379
       - TZ=Asia/Shanghai
-      - ERROR_LOG_ENABLED=true # 是否启用错误日志记录 (Whether to enable error log recording)
-      - BATCH_UPDATE_ENABLED=true  # 是否启用批量更新 (Whether to enable batch update)
-#      - STREAMING_TIMEOUT=300  # 流模式无响应超时时间，单位秒，默认120秒，如果出现空补全可以尝试改为更大值 （Streaming timeout in seconds, default is 120s. Increase if experiencing empty completions）
-#      - SESSION_SECRET=random_string  # 多机部署时设置，必须修改这个随机字符串！！ （multi-node deployment, set this to a random string!!!!!!!）
-#      - SYNC_FREQUENCY=60  # Uncomment if regular database syncing is needed
-#      - GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX  # Google Analytics 的测量 ID (Google Analytics Measurement ID)
-#      - UMAMI_WEBSITE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  # Umami 网站 ID (Umami Website ID)
-#      - UMAMI_SCRIPT_URL=https://analytics.umami.is/script.js  # Umami 脚本 URL，默认为官方地址 (Umami Script URL, defaults to official URL)
-
-    depends_on:
-      - redis
-      # 使用外部数据库，不需要依赖本地 postgres 或 mysql
+      - ERROR_LOG_ENABLED=true
+      - BATCH_UPDATE_ENABLED=true
+#      - STREAMING_TIMEOUT=300
+#      - SESSION_SECRET=random_string
+#      - SYNC_FREQUENCY=60
+#      - GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX
+#      - UMAMI_WEBSITE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+#      - UMAMI_SCRIPT_URL=https://analytics.umami.is/script.js
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/status | grep -o '\"success\":\\s*true' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  redis:
-    image: redis:latest
-    container_name: redis
-    restart: always
-
-  # 使用外部腾讯云 CynosDB MySQL，本地 PostgreSQL 已停用
+  # 使用宿主机的 Redis（127.0.0.1:6379），不需要容器
+  # 使用外部腾讯云 CynosDB MySQL，不需要本地数据库
 #  postgres:
 #    image: postgres:15
 #    container_name: postgres
