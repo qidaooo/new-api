@@ -1,0 +1,43 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 */6 * * *' # 每 6 小时同步一次
+  workflow_dispatch: # 支持手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Sync upstream changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 添加上游仓库
+          git remote add upstream https://github.com/Calcium-Ion/new-api.git
+          git fetch upstream main
+
+          # rebase 上游更新，自动解决冲突时优先使用上游版本
+          git rebase upstream/main || {
+            echo "=== 存在冲突，自动解决 ==="
+            git diff --name-only --diff-filter=U | while read file; do
+              echo "解决冲突: $file (采用上游版本)"
+              git checkout --theirs "$file"
+              git add "$file"
+            done
+            git rebase --continue || {
+              # 如果还有冲突（极少见），跳过空提交
+              GIT_EDITOR=true git rebase --continue 2>/dev/null || true
+            }
+          }
+
+      - name: Push changes
+        run: |
+          git push origin main --force-with-lease
